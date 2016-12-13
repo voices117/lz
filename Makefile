@@ -1,89 +1,65 @@
-# compiler and Linker
+# compiler
 CC          := gcc
 
-# the Target Binary Program
+# binary file name
 TARGET      := lzss
 
 # the Directories, Source, Includes, Objects, Binary and Resources
 SRCDIR      := src
-TESTDIR     := test
+TESTDIR     := tests
 INCDIR      := inc
 BUILDDIR    := int
-TEST_BUILDDIR    := int/test
 TARGETDIR   := target
-RESDIR      := res
 SRCEXT      := c
-DEPEXT      := d
 OBJEXT      := o
+DEFINES     :=
 
-# flags, Libraries and Includes
+# flags, libraries and includes
 CFLAGS      := -g -std=c99 -Wall -Wpedantic -Werror
 LIB         :=
 INC         := -I$(INCDIR) -I/usr/local/include
-TEST_INC    := -I$(INCDIR) -I/usr/local/include
-INCDEP      := -I$(INCDIR)
+DEFINES     :=
 
 #---------------------------------------------------------------------------------
 # DO NOT EDIT BELOW THIS LINE
 #---------------------------------------------------------------------------------
-SOURCES      := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
-OBJECTS      := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
 
-TEST_SOURCES := $(shell find $(TESTDIR) -type f -name *.$(SRCEXT))
-TEST_OBJECTS := $(patsubst $(TESTDIR)/%,$(TEST_BUILDDIR)/%,$(TEST_SOURCES:.$(SRCEXT)=.$(OBJEXT)))
-TEST_OBJECTS += $(OBJECTS)
+SOURCES     := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
+OBJECTS     := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
 
-# default Make
-all: $(TARGET)
 
-# remake
-remake: cleaner all
-
-# make the Directories
-directories:
-	@mkdir -p $(TARGETDIR)
-	@mkdir -p $(BUILDDIR)
-	@mkdir -p $(TEST_BUILDDIR)
-
-# clean only objects
-clean:
-	@$(RM) -rf $(BUILDDIR)
-
-# full clean, Objects and Binaries
-cleaner: clean
-	@$(RM) -rf $(TARGETDIR)
-
-# pull in dependency info for *existing* .o files
--include $(OBJECTS:.$(OBJEXT)=.$(DEPEXT))
--include $(TEST_OBJECTS:.$(OBJEXT)=.$(DEPEXT))
-
-# link
-$(TARGET): $(OBJECTS)
-	$(CC) -o $(TARGETDIR)/$(TARGET) $^ $(LIB)
+# default: compiles the binary
+$(TARGET): $(OBJECTS) | dirs
+	@$(CC) $(CFLAGS) $(INC) $(DEFINES) -o $(TARGETDIR)/$(TARGET) $^ $(LIB)
+	@echo "LD $@"
 
 # builds and runs the unit tests
-test: $(TEST_OBJECTS)
-	$(CC) -o $(TARGETDIR)/utest $^ $(LIB)
+tests: $(TEST_OBJECTS) $(OBJECTS) | dirs
+	$(CC) $(CFLAGS) $(INC) $(DEFINES) -o $(TARGETDIR)/tests $^ $(LIB)
+	@echo "LD $@"
+	./$(TARGETDIR)/tests
 
-# compile
-$(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
+# clean objects and binaries
+clean:
+	@$(RM) -rf $(BUILDDIR) $(TARGETDIR)
+
+# creates the directories
+dirs:
+	@mkdir -p $(TARGETDIR)
+	@mkdir -p $(BUILDDIR)
+
+# rule to build dependencies files
+$(BUILDDIR)/%.d:
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(INC) -c -o $@ $<
-	@$(CC) $(CFLAGS) $(INCDEP) -MM $(SRCDIR)/$*.$(SRCEXT) > $(BUILDDIR)/$*.$(DEPEXT)
-	@cp -f $(BUILDDIR)/$*.$(DEPEXT) $(BUILDDIR)/$*.$(DEPEXT).tmp
-	@sed -e 's|.*:|$(BUILDDIR)/$*.$(OBJEXT):|' < $(BUILDDIR)/$*.$(DEPEXT).tmp > $(BUILDDIR)/$*.$(DEPEXT)
-	@sed -e 's/.*://' -e 's/\\$$//' < $(BUILDDIR)/$*.$(DEPEXT).tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(BUILDDIR)/$*.$(DEPEXT)
-	@rm -f $(BUILDDIR)/$*.$(DEPEXT).tmp
+	@$(CC) $(CFLAGS) $(INC) $(DEFINES) -MM $(SRCDIR)/$*.$(SRCEXT) -MT $(BUILDDIR)/$*.$(OBJEXT) > $(BUILDDIR)/$*.d
 
-# compile
-$(TEST_BUILDDIR)/%.$(OBJEXT): $(TESTDIR)/%.$(SRCEXT)
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(TEST_INC) -c -o $@ $<
-	$(CC) $(CFLAGS) $(TEST_INC) -MM $(TESTDIR)/$*.$(SRCEXT) > $(TEST_BUILDDIR)/$*.$(DEPEXT)
-	@cp -f $(TEST_BUILDDIR)/$*.$(DEPEXT) $(BUILDDIR)/$*.$(DEPEXT).tmp
-	@sed -e 's|.*:|$(TEST_BUILDDIR)/$*.$(OBJEXT):|' < $(TEST_BUILDDIR)/$*.$(DEPEXT).tmp > $(TEST_BUILDDIR)/$*.$(DEPEXT)
-	@sed -e 's/.*://' -e 's/\\$$//' < $(BUILDDIR)/$*.$(DEPEXT).tmp | fmt -1 | sed -e 's/^ *//' -e 's/$$/:/' >> $(TEST_BUILDDIR)/$*.$(DEPEXT)
-	@rm -f $(TEST_BUILDDIR)/$*.$(DEPEXT).tmp
+# rule to build object files
+$(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT) $(BUILDDIR)/%.d
+	@echo "CC $<"
+	@$(CC) $(CFLAGS) $(INC) $(DEFINES) -c -o $@ $<
 
-# non-File Targets
-.PHONY: all remake clean cleaner resources
+
+.PHONY: clean dirs
+
+# includes generated dependency files
+-include $(OBJECTS:.$(OBJEXT)=.d)
