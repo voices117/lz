@@ -32,6 +32,10 @@ SRCS := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 # object files
 OBJS := $(patsubst %,$(BUILDDIR)/%,$(SRCS:.$(SRCEXT)=.o))
 
+# includes the flag to generate the dependency files when compiling
+CFLAGS += -MD
+
+
 # special definitions used for the unit tests
 ifeq ($(MAKECMDGOALS),profile-tests)
     # adds an extra include so the tests can include the sources
@@ -85,21 +89,14 @@ profile-tests: $(OBJS) | dirs
 	@echo "LD $@"
 	./$(TARGETDIR)/tests
 
-# rule to build dependencies files
-$(BUILDDIR)/%.d:
-	@mkdir -p $(dir $@)
-	@$(CC) $(CFLAGS) $(INC) $(DEFINES) -MM $*.$(SRCEXT) -MT $(BUILDDIR)/$*.o > $(BUILDDIR)/$*.d
-
 # rule to build object files
-$(BUILDDIR)/%.o: %.$(SRCEXT) $(BUILDDIR)/%.d
+$(BUILDDIR)/%.o: %.$(SRCEXT)
+	@mkdir -p $(basename $@)
 	@echo "CC $<"
 	@$(CC) $(CFLAGS) $(INC) $(DEFINES) -c -o $@ $<
 
 
 .PHONY: clean dirs tests $(TARGET) profile-$(TARGET) profile-tests
-
-# this avoids the generated files from being deleted
-.PRECIOUS: $(OBJS:.o=.d)
 
 # includes generated dependency files
 -include $(OBJS:.o=.d)
