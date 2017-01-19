@@ -10,8 +10,8 @@ SRCEXT      := c
 
 # compiler parameters
 CC          := gcc
-CFLAGS      := -g -std=c99 -Wall -Wpedantic -Werror
-LIB         :=
+CFLAGS      := -g3 -std=c99 -Wall -Wpedantic -Werror
+LIB         := m
 INC         := /usr/local/include
 DEFINES     :=
 
@@ -57,6 +57,9 @@ endif
 # adds the include prefix to the include directories
 INC := $(addprefix -I,$(INC))
 
+# adds the lib prefix to the libraries
+LIB := $(addprefix -l,$(LIB))
+
 # adds the define prefix to the defines
 DEFINES := $(addprefix -D,$(DEFINES))
 
@@ -93,7 +96,7 @@ profile-tests: $(OBJS) | dirs
 $(BUILDDIR)/%.o: %.$(SRCEXT)
 	@mkdir -p $(basename $@)
 	@echo "CC $<"
-	@$(CC) $(CFLAGS) $(INC) $(DEFINES) -c -o $@ $<
+	@$(CC) $(CFLAGS) $(INC) $(DEFINES) $(LIB) -c -o $@ $<
 
 
 .PHONY: clean dirs tests $(TARGET) profile-$(TARGET) profile-tests
