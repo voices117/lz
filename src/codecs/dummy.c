@@ -1,13 +1,21 @@
 #include "dummy.h"
 
 
+/** Dummy codec internal data. */
+typedef struct
+{
+  char dummy;
+
+} dummy_codec_t;
+
+
 /**
  * Writes an encoded literal.
  * @param  codec The codec instance.
  * @param  c     Character to write.
  * @return       \c true on success, \c false otherwise.
  */
-static bool _write_literal( codec_t *codec, char c )
+static bool _write_literal( codec_t *codec, unsigned char c )
 {
   return true;
 }
@@ -31,7 +39,7 @@ static bool _write_match( codec_t *codec, match_t m )
  * @param  c     The output character.
  * @return       \c true on success, \c false otherwise.
  */
-static bool _read( codec_t *codec, char *c )
+static bool _read( codec_t *codec, unsigned char *c )
 {
   return false;
 }
@@ -62,10 +70,10 @@ static void _destroy( codec_t *codec )
  * Creates a new ASCII codec.
  * @return  ASCII codec or \c NULL in case of error.
  */
-codec_t dummy_codec_create( void )
+codec_t *dummy_codec_create( void )
 {
   /* initializes the codec and returns it */
-  codec_t c = CODEC_INIT();
-  return c;
+  NEW_CODEC( dummy_codec_t );
+  return codec;
 }
 

@@ -7,7 +7,11 @@
 
 
 /* prototypes */
-codec_t binary_create_codec( void );
+codec_t *binary_codec_create( codec_out_cb_t cb,
+                              void *cb_ctx,
+                              size_t min_match_len,
+                              size_t max_match_len,
+                              size_t max_pos );
 
 
 #endif

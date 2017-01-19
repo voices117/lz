@@ -7,7 +7,7 @@
 
 
 /* function prototypes */
-codec_t dummy_codec_create( void );
+codec_t *dummy_codec_create( void );
 
 
 #endif
