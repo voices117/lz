@@ -1,2 +1,9 @@
 # lz
-Some LZ compressors
+
+run
+
+```
+make tests
+```
+
+to compile and execute the unit tests
