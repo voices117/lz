@@ -99,3 +99,9 @@ bool match_list_get( const match_list_t *ml, size_t pos, match_t *m )
 
   return true;
 }
+
+
+size_t match_list_length( const match_list_t *ml )
+{
+  return ml->num_elems;
+}
