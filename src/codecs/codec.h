@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include "../match.h"
+#include "../datatype.h"
 
 
 /** Codec implementation initializer. */
@@ -38,10 +39,6 @@
   /* creates and initializes the API pointer */ \
   codec_t *codec = &buf->api;                   \
   buf->api = CODEC_INIT( ic )
-
-
-/** Byte data type. */
-typedef unsigned char byte;
 
 
 /** Callback used by the codec to output the encoded data.
