@@ -284,3 +284,58 @@ TEST( ComplexStrings )
     #undef MAX_MATCH
   }
 }
+
+
+TEST( ShortWindow )
+{
+  {
+    #define WINDOW_SIZE 16
+    #define MIN_MATCH 4
+    #define MAX_MATCH 1024
+
+    const char data[] = "aaaaaaaaaaaaaaaaaaaa";
+    const char expected[] = "0a 1(0,19)\n";
+
+    TEST_W_ASCII( expected, data, WINDOW_SIZE, MIN_MATCH, MAX_MATCH );
+
+    #undef WINDOW_SIZE
+    #undef MIN_MATCH
+    #undef MAX_MATCH
+  }
+
+  {
+    #define WINDOW_SIZE 64
+    #define MIN_MATCH 4
+    #define MAX_MATCH 1024
+
+    const char data[] = "there are 10 types of people in the world: those who understand binary, "\
+                        "and those who don't.";
+    const char expected[] = "0t 0h 0e 0r 0e 0  0a 0r 0e 0  01 00 0  0t 0y 0p 0e 0s 0  0o 0f 0  0p 0e"\
+                            " 0o 0p 0l 0e 0  0i 0n 0  0t 0h 0e 0  0w 0o 0r 0l 0d 0: 0  0t 0h 0o 0s 0e"
+                            " 0  0w 0h 0o 0  0u 0n 0d 0e 0r 0s 0t 0a 0n 0d 0  0b 0i 0n 0a 0r 0y 0, 0 "
+                            " 1(11,4) 1(32,10) 0d 0o 0n 0' 0t 0.\n";
+
+    TEST_W_ASCII( expected, data, WINDOW_SIZE, MIN_MATCH, MAX_MATCH );
+
+    #undef WINDOW_SIZE
+    #undef MIN_MATCH
+    #undef MAX_MATCH
+  }
+
+  {
+    #define WINDOW_SIZE 32
+    #define MIN_MATCH 4
+    #define MAX_MATCH 1024
+
+    const char data[] = "six sick hicks nick six slick bricks with picks and sticks.";
+    const char expected[] = "0s 0i 0x 0  0s 0i 0c 0k 0  0h 0i 0c 0k 0s 0  0n 1(10,4) 1(19,5) 0l "
+                            "1(20,4) 0b 0r 1(21,5) 0w 0i 0t 0h 0  0p 1(10,5) 0a 0n 0d 0  0s 0t "
+                            "1(10,4) 0.\n";
+
+    TEST_W_ASCII( expected, data, WINDOW_SIZE, MIN_MATCH, MAX_MATCH );
+
+    #undef WINDOW_SIZE
+    #undef MIN_MATCH
+    #undef MAX_MATCH
+  }
+}
