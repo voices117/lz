@@ -101,6 +101,12 @@ bool match_list_get( const match_list_t *ml, size_t pos, match_t *m )
 }
 
 
+void match_list_reset( match_list_t *ml )
+{
+  ml->num_elems = 0;
+}
+
+
 size_t match_list_length( const match_list_t *ml )
 {
   return ml->num_elems;

@@ -51,6 +51,7 @@ void match_list_uninit( match_list_t *ml );
 bool match_list_append( match_list_t *ml, const match_t *m );
 size_t match_list_update( match_list_t *ml, ml_update_cb_t cb, void *cb_ctx );
 bool match_list_get( const match_list_t *ml, size_t pos, match_t *m );
+void match_list_reset( match_list_t *ml );
 size_t match_list_length( const match_list_t *ml );
 
 

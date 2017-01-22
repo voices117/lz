@@ -125,14 +125,34 @@ static lzss_error_t _compress_one( lzss_t *lz, byte b )
         lz->current_match_len = 0;
       }
     }
-    else
+    else if( match.len < lz->min_match_len )
       lz->current_match[lz->current_match_len++] = b;
   }
 
-  if( match_list_length( &lz->ml ) == 0 && _find_matches( &lz->window, &lz->ml, b ) > 0 )
+  if( match_list_length( &lz->ml ) == 0 &&
+      _find_matches( &lz->window, &lz->ml, b ) > 0 &&
+      ( lz->current_match_len < lz->min_match_len ) )
     lz->current_match[lz->current_match_len++] = b;
   else if( match_list_length( &lz->ml ) == 0 && !lz->codec->write_literal( lz->codec, b ) )
     return lzss_error_io_error;
+
+  if( match_list_length( &lz->ml ) > 0 )
+  {
+    match_t match;
+    /* gets the first match in the list, in case there are no more matches left in the window */
+    if( !match_list_get( &lz->ml, 0, &match ) )
+      /* TODO: inform better about the error */
+      exit( 6 );
+
+    if( match.len == lz->max_match_len )
+    {
+      if( !lz->codec->write_match( lz->codec, match ) )
+        return lzss_error_io_error;
+
+      lz->current_match_len = 0;
+      match_list_reset( &lz->ml );
+    }
+  }
 
   /* appends the new byte into the window */
   window_append( &lz->window, b );
@@ -262,6 +282,7 @@ lzss_error_t lzss_end( lzss_t *lz )
  */
 void lzss_uninit( lzss_t *lz )
 {
+  match_list_uninit( &lz->ml );
   window_release( &lz->window );
   free( lz->current_match );
   lz->codec = NULL;

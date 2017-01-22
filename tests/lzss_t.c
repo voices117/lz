@@ -173,6 +173,40 @@ TEST( MinMatchLength )
 }
 
 
+TEST( MaxMatchLength )
+{
+  {
+    #define WINDOW_SIZE 256
+    #define MIN_MATCH 8
+    #define MAX_MATCH 15
+
+    const char data[] = "aaaaaaaaaaaaaaaaaa";
+    const char expected[] = "0a 1(0,15) 0a 0a\n";
+
+    TEST_W_ASCII( expected, data, WINDOW_SIZE, MIN_MATCH, MAX_MATCH );
+
+    #undef WINDOW_SIZE
+    #undef MIN_MATCH
+    #undef MAX_MATCH
+  }
+
+  {
+    #define WINDOW_SIZE 256
+    #define MIN_MATCH 3
+    #define MAX_MATCH 15
+
+    const char data[] = "123456789123456789123456789";
+    const char expected[] = "01 02 03 04 05 06 07 08 09 1(8,15) 1(8,3)\n";
+
+    TEST_W_ASCII( expected, data, WINDOW_SIZE, MIN_MATCH, MAX_MATCH );
+
+    #undef WINDOW_SIZE
+    #undef MIN_MATCH
+    #undef MAX_MATCH
+  }
+}
+
+
 TEST( ComplexStrings )
 {
   {
