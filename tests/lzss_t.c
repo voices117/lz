@@ -7,6 +7,19 @@
 /** Asserts that the returned value is not an lzs_* error. */
 #define ASSERT_NO_ERROR( expression )  ASSERT_EQ( lzss_error_no_error, ( expression ) )
 
+/** Asserts that an obtained buffer contains the expected string.
+ *  If it doesn't, the string is printed */
+#define ASSERT_COMPRESSED( expected, obtained )                      \
+  do {                                                               \
+    if( sizeof( expected ) != obtained.data_len ||                   \
+        memcmp( expected, obtained.data, sizeof( expected ) ) != 0 ) \
+    {                                                                \
+      printf( "expected: %s", expected );                            \
+      printf( "obtained: %s", obtained.data );                       \
+      ASSERT_FALSE( true );                                          \
+    }                                                                \
+  }                                                                  \
+  while(0)
 
 /* buffer with size */
 struct buffer
@@ -62,8 +75,7 @@ static bool _ascii_codec_out_cb( const void *data, size_t size, void *ctx )
     ASSERT_NO_ERROR( lzss_compress( &lz, data, strlen( data ) ) );                 \
     ASSERT_NO_ERROR( lzss_end( &lz ) );                                            \
                                                                                    \
-    ASSERT_EQ( sizeof( expected ), obtained.data_len );                            \
-    ASSERT_EQ( 0, memcmp( expected, obtained.data, sizeof( expected ) ) );         \
+    ASSERT_COMPRESSED( expected, obtained );                                       \
                                                                                    \
     /* releases memory */                                                          \
     codec->destroy( codec );                                                       \
@@ -99,8 +111,8 @@ TEST( BasicCompression )
     const char data[] = "bbbbbaaaaaaaaaa";
 
     /* expects a literal 'b' followed by a match from pos 0 of len 4, a literal 'a' and another
-     * match */
-    const char expected[] = "0b 1(0,4) 0a 1(5,9)\n";
+     * match (at that time, the 'a' will be at pos 0) */
+    const char expected[] = "0b 1(0,4) 0a 1(0,9)\n";
 
    TEST_W_ASCII( expected, data, WINDOW_SIZE, MIN_MATCH, MAX_MATCH );
 
@@ -150,7 +162,86 @@ TEST( MinMatchLength )
     const char data[] = "aaaaaaaabbbbbbbbaaaaaaaaaaa";
 
     /* expects 9 literal 'a' because the min match length was not reached */
-    const char expected[] = "0a 0a 0a 0a 0a 0a 0a 0a 0b 0b 0b 0b 0b 0b 0b 0b 0a 1(16,10)\n";
+    const char expected[] = "0a 0a 0a 0a 0a 0a 0a 0a 0b 0b 0b 0b 0b 0b 0b 0b 1(15,8) 0a 0a 0a\n";
+
+    TEST_W_ASCII( expected, data, WINDOW_SIZE, MIN_MATCH, MAX_MATCH );
+
+    #undef WINDOW_SIZE
+    #undef MIN_MATCH
+    #undef MAX_MATCH
+  }
+}
+
+
+TEST( ComplexStrings )
+{
+  {
+    #define WINDOW_SIZE 1024
+    #define MIN_MATCH 8
+    #define MAX_MATCH 1024
+
+    const char data[] = "abcabcabcabcabcabc";
+    const char expected[] = "0a 0b 0c 1(2,15)\n";
+
+    TEST_W_ASCII( expected, data, WINDOW_SIZE, MIN_MATCH, MAX_MATCH );
+
+    #undef WINDOW_SIZE
+    #undef MIN_MATCH
+    #undef MAX_MATCH
+  }
+
+  {
+    #define WINDOW_SIZE 1024
+    #define MIN_MATCH 8
+    #define MAX_MATCH 1024
+
+    const char data[] = "abbbbcabcabcabcabcabd";
+    const char expected[] = "0a 0b 0b 0b 0b 0c 0a 0b 1(2,12) 0d\n";
+
+    TEST_W_ASCII( expected, data, WINDOW_SIZE, MIN_MATCH, MAX_MATCH );
+
+    #undef WINDOW_SIZE
+    #undef MIN_MATCH
+    #undef MAX_MATCH
+  }
+
+  {
+    #define WINDOW_SIZE 1024
+    #define MIN_MATCH 4
+    #define MAX_MATCH 1024
+
+    const char data[] = "abcd 1 2 3 4 5 6 abcdaa";
+    const char expected[] = "0a 0b 0c 0d 0  01 0  02 0  03 0  04 0  05 0  06 0  1(16,4) 0a 0a\n";
+
+    TEST_W_ASCII( expected, data, WINDOW_SIZE, MIN_MATCH, MAX_MATCH );
+
+    #undef WINDOW_SIZE
+    #undef MIN_MATCH
+    #undef MAX_MATCH
+  }
+
+  {
+    #define WINDOW_SIZE 4
+    #define MIN_MATCH 2
+    #define MAX_MATCH 1024
+
+    const char data[] = "ABCDADADAABDAA";
+    const char expected[] = "0A 0B 0C 0D 0A 1(1,4) 0A 0B 1(3,3)\n";
+
+    TEST_W_ASCII( expected, data, WINDOW_SIZE, MIN_MATCH, MAX_MATCH );
+
+    #undef WINDOW_SIZE
+    #undef MIN_MATCH
+    #undef MAX_MATCH
+  }
+
+  {
+    #define WINDOW_SIZE 4
+    #define MIN_MATCH 2
+    #define MAX_MATCH 1024
+
+    const char data[] = "ABCDADADAABCAA";
+    const char expected[] = "0A 0B 0C 0D 0A 1(1,4) 0A 0B 0C 1(3,2)\n";
 
     TEST_W_ASCII( expected, data, WINDOW_SIZE, MIN_MATCH, MAX_MATCH );
 

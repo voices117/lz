@@ -1,4 +1,5 @@
 #include <string.h>
+#include "math2.h"
 #include "window.h"
 
 
@@ -9,14 +10,12 @@
  * @param  size        Size of the window.
  * @return             On success \c true, \c false otherwise.
  */
-bool window_create( window_t *w, size_t size )
+bool window_init( window_t *w, size_t size )
 {
-  w->buffer = malloc( size );
-  if( w->buffer == NULL )
+  if( !ring_buffer_init( &w->rb, size ) )
     return false;
 
   w->buffer_size = size;
-  w->start_offset = 0;
   w->data_size = 0;
 
   return true;
@@ -28,10 +27,9 @@ bool window_create( window_t *w, size_t size )
  *
  * @param w Window.
  */
-void window_destroy( window_t *w )
+void window_release( window_t *w )
 {
-  free( w->buffer );
-  memset( w, 0, sizeof( *w ) );
+  ring_buffer_release( &w->rb );
 }
 
 
@@ -44,18 +42,8 @@ void window_destroy( window_t *w )
  */
 void window_append( window_t *w, char c )
 {
-  /* if the buffer is not complete yet, just appends the character */
-  if( w->data_size < w->buffer_size )
-  {
-    w->buffer[w->data_size] = c;
-    w->data_size++;
-    return;
-  }
-
-  /* if it's already full, overwrites the oldest element and updates the start offset */
-  w->buffer[w->start_offset] = c;
-  if( ++w->start_offset == w->buffer_size )
-    w->start_offset = 0;
+  w->data_size += 1;
+  ring_buffer_append( &w->rb, c );
 }
 
 
@@ -69,14 +57,8 @@ void window_append( window_t *w, char c )
  */
 bool window_read( const window_t *w, char *c, size_t pos )
 {
-  if( pos >= w->data_size )
-    return false;
-
-  /* adjusts the position to the logical address */
-  pos = ( w->start_offset + pos ) % w->buffer_size;
-  *c = w->buffer[pos];
-
-  return true;
+  uint64_t rb_pos = ( w->data_size - pos ) - 1;
+  return ring_buffer_get( &w->rb, ( byte * )c, rb_pos );
 }
 
 
@@ -87,7 +69,7 @@ bool window_read( const window_t *w, char *c, size_t pos )
  */
 size_t window_get_size( const window_t *w )
 {
-  return w->data_size;
+  return MIN( w->data_size, w->buffer_size );
 }
 
 
@@ -98,5 +80,5 @@ size_t window_get_size( const window_t *w )
 void window_clear( window_t *w )
 {
   w->data_size = 0;
-  w->start_offset = 0;
+  ring_buffer_reset( &w->rb );
 }

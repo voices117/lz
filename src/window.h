@@ -5,6 +5,7 @@
 /* include area */
 #include <stdlib.h>
 #include <stdbool.h>
+#include "ring_buffer.h"
 
 
 /** Library data types. */
@@ -13,23 +14,20 @@
 typedef struct
 {
   /** Internal buffer. */
-  char *buffer;
+  ring_buffer_t rb;
 
   /** Internal buffer's size. */
   size_t buffer_size;
 
-  /** Offset to the logical beginning of the buffer (from the physical address). */
-  size_t start_offset;
-
-  /** Number of bytes already occupied. */
-  size_t data_size;
+  /** Number of bytes already written. */
+  uint64_t data_size;
 
 } window_t;
 
 
 /** Prototypes */
-bool window_create( window_t *w, size_t size );
-void window_destroy( window_t *w );
+bool window_init( window_t *w, size_t size );
+void window_release( window_t *w );
 
 /* IO */
 void window_append( window_t *w, char c );

@@ -112,33 +112,26 @@ static lzss_error_t _compress_one( lzss_t *lz, byte b )
       {
         if( !lz->codec->write_match( lz->codec, match ) )
           return lzss_error_io_error;
+
+        lz->current_match_len = 0;
       }
       else
       {
         /* outputs all buffered bytes as literals */
         for( size_t i = 0; i < match.len; i++ )
-        {
-          char c;
-          if( !window_read( &lz->current_match, &c, i ) )
-            /* TODO: inform better about this error */
-            exit( 7 );
-
-          if( !lz->codec->write_literal( lz->codec, c ) )
+          if( !lz->codec->write_literal( lz->codec, lz->current_match[i] ) )
             return lzss_error_io_error;
-        }
 
-        window_clear( &lz->current_match );
+        lz->current_match_len = 0;
       }
-
-      if( !lz->codec->write_literal( lz->codec, b ) )
-        return lzss_error_io_error;
     }
     else
-      window_append( &lz->current_match, b );
+      lz->current_match[lz->current_match_len++] = b;
   }
-  else if( _find_matches( &lz->window, &lz->ml, b ) > 0 )
-    window_append( &lz->current_match, b );
-  else if( !lz->codec->write_literal( lz->codec, b ) )
+
+  if( match_list_length( &lz->ml ) == 0 && _find_matches( &lz->window, &lz->ml, b ) > 0 )
+    lz->current_match[lz->current_match_len++] = b;
+  else if( match_list_length( &lz->ml ) == 0 && !lz->codec->write_literal( lz->codec, b ) )
     return lzss_error_io_error;
 
   /* appends the new byte into the window */
@@ -164,13 +157,15 @@ lzss_error_t lzss_init( lzss_t *lz,
                         codec_t *codec )
 {
   /* initializes the internal window buffer */
-  if( !window_create( &lz->window, window_size ) )
+  if( !window_init( &lz->window, window_size ) )
     return lzss_error_malloc_error;
 
   /* initializes the internal match buffer.
-   * this window holds the characters that are currently matching, but have not yet got to the
+   * this buffer holds the characters that are currently matching, but have not yet got to the
    * minimum match length, so the may end up being encoded as literals */
-  if( !window_create( &lz->current_match, min_match_len ) )
+  lz->current_match_len = 0;
+  lz->current_match = malloc( min_match_len );
+  if( lz->current_match == NULL )
     goto error0;
 
   if( !match_list_init( &lz->ml, window_size ) )
@@ -185,10 +180,10 @@ lzss_error_t lzss_init( lzss_t *lz,
   return lzss_error_no_error;
 
 error1:
-  window_destroy( &lz->current_match );
+  free( lz->current_match );
 
 error0:
-  window_destroy( &lz->window );
+  window_release( &lz->window );
 
   return lzss_error_malloc_error;
 }
@@ -243,16 +238,11 @@ lzss_error_t lzss_end( lzss_t *lz )
     }
     else
     {
-      /* outputs all buffered bytes as literals */
       for( size_t i = 0; i < match.len; i++ )
-      {
-        char c;
-        if( !window_read( &lz->current_match, &c, i ) )
-          return lz_error_internal_error;
-
-        if( !lz->codec->write_literal( lz->codec, c ) )
+        if( !lz->codec->write_literal( lz->codec, lz->current_match[i] ) )
           return lzss_error_io_error;
-      }
+
+      lz->current_match_len = 0;
     }
   }
 
@@ -272,7 +262,7 @@ lzss_error_t lzss_end( lzss_t *lz )
  */
 void lzss_uninit( lzss_t *lz )
 {
-  window_destroy( &lz->window );
-  window_destroy( &lz->current_match );
+  window_release( &lz->window );
+  free( lz->current_match );
   lz->codec = NULL;
 }

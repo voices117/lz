@@ -228,6 +228,7 @@ static void _fsm( FILE *input, window_t *w, window_t *read, match_list_t *ml, co
   #define EXIT 4
   #define PRNT 5
 
+  /* TODO: use the real min match length */
   #define MIN_MLEN 2
 
   bool stop = false;
@@ -321,6 +322,20 @@ static void _fsm( FILE *input, window_t *w, window_t *read, match_list_t *ml, co
 }
 
 
+/**
+ * Callback used by the codecs to output data.
+ * @param  buffer      Pointer to the encoded data.
+ * @param  buffer_size Size of the data to encode.
+ * @param  ctx         FILE stream.
+ * @return             \c true on success, \c false otherwise.
+ */
+static bool _codec_out_cb( const void *buffer, size_t buffer_size, void *ctx )
+{
+  /* the callabck context is the file stream */
+  return( fwrite( buffer, buffer_size, 1, ctx ) == buffer_size );
+}
+
+
 /** Compress the file \a input and save it in \a output.
  *
  *  \param output File where the output is written.
@@ -333,13 +348,13 @@ void compress( FILE *output, FILE *input, size_t wsize, size_t min_match, size_t
 {
   /* window containing a limited sequence of characters seen so far */
   window_t window;
-  if( !window_create( &window, wsize ) )
+  if( !window_init( &window, wsize ) )
     ABORT( "Malloc error" );
 
   /* contains the characters matched that could not end up in a match because of the match's length
    **/
   window_t read;
-  if( !window_create( &read, min_match ) )
+  if( !window_init( &read, min_match ) )
     ABORT( "Malloc error" );
 
   match_list_t match_list;
@@ -347,20 +362,31 @@ void compress( FILE *output, FILE *input, size_t wsize, size_t min_match, size_t
     ABORT( "Malloc error" );
 
   /* sets the appropriate codec */
-  codec_t codec = ascii ? ascii_codec_create() : dummy_codec_create();
+  codec_t *codec = ascii ? ascii_codec_create( _codec_out_cb,
+                                               output,
+                                               min_match,
+                                               max_match,
+                                               wsize ) :
+                           dummy_codec_create();
+  if( !codec )
+    ABORT( "Codec init error" );
 
   /* runs the LZ algorithm */
-  _fsm( input, &window, &read, &match_list, &codec );
+  _fsm( input, &window, &read, &match_list, codec );
 
   /* releases all resources */
-  codec.close( &codec );
+  codec->close( codec );
   match_list_uninit( &match_list );
-  window_destroy( &read );
-  window_destroy( &window );
+  window_release( &read );
+  window_release( &window );
 }
 
 
+#ifdef __TESTS__
+int _fake_main( int argc, char **argv )
+#else
 int main( int argc, char **argv )
+#endif
 {
   /* initializes the arguments with the default values */
   args_t arguments = {

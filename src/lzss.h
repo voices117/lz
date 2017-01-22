@@ -53,8 +53,11 @@ typedef struct
   /** Window buffer. */
   window_t window;
 
-  /** Window to store the current matched bytes (but not yet outputted). */
-  window_t current_match;
+  /** buffer to store the current matched bytes (but not yet outputted). */
+  byte *current_match;
+
+  /** Number of bytes currently matched. */
+  size_t current_match_len;
 
   /** List of window matches. */
   match_list_t ml;
